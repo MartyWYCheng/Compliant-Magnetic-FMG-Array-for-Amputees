@@ -1,0 +1,434 @@
+
+close all;
+clear results_mse results_PE avg_mse avg_PE
+trainBool = false;   %<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< TRAIN NN's?
+online = true;      %used for online testing only
+
+iterations = 5;     %how many iterations per sensor reduction
+reduction_rate = 2; %how many sensors to reduce by
+
+%how many sensor reductions
+if Channel_amount == 24
+    test_amount = 10; 
+else
+    test_amount = 7;
+end
+
+%plotting and saving
+save_vars = false;      %save results
+save_plots = false;     %save plots
+gen_nets = false;       %save networks
+gen_sim = false;         %generate simulink NN block (requires training)
+plot_confusion = false;
+plot_heatmap = false;
+closeall_after = false;
+
+
+
+if online == true
+    iterations = 1;
+    test_amount = 1; 
+    gen_sim = true;
+    closeall_after = true;
+else
+    load preset_test.mat
+end
+
+%% OFFLINE    
+Channel_array = Channel_amount-(test_amount-1)*reduction_rate:reduction_rate:Channel_amount; 
+if trainBool == true
+    for i = 1:length(Channel_array)
+        x{i} = gpuArray(PCA_reduction_channels{1,Channel_array(i)});
+    end
+    t = gpuArray(classes_reduced');
+    
+    results_mse = cell(iterations,1);
+    results_PE = cell(iterations,1);
+    networks = cell(iterations, test_amount);
+    
+    %% training
+    for i = 1:iterations
+        for j = 1:test_amount
+            fprintf('PCA: %.f , Iteration: %.f\n', j, i)
+            trainFcn = 'trainscg';  % Scaled conjugate gradient backpropagation.
+            hiddenLayerSize = [100];
+            net = patternnet(hiddenLayerSize, trainFcn);
+            net.input.processFcns = {'removeconstantrows','mapminmax'};
+            net.divideFcn = 'dividerand';  % Divide data randomly
+            net.divideMode = 'sample';  % Divide up every sample
+            net.divideParam.trainRatio = 70/100;
+            net.divideParam.valRatio = 15/100;
+            net.divideParam.testRatio = 15/100;
+            net.performFcn = 'mse';  % mse
+            net.plotFcns = {'plotperform','plottrainstate','ploterrhist', ...
+                'plotconfusion', 'plotroc'};
+            [net,tr] = train(net,x{j}',t);
+            
+            clear e performance tind yind percentErrors
+            y = net(x{j}');
+            e = gsubtract(t,y);
+            performance = perform(net,t,y);
+            tind = vec2ind(t);
+            yind = vec2ind(y);
+            percentErrors = sum(tind ~= yind)/numel(tind);
+            
+            clear trainTargets testTargets valTargets trainPerformance valPerformance testPerformance
+            trainTargets = gpuArray(t .* tr.trainMask{1});
+            valTargets = gpuArray(t .* tr.valMask{1});
+            testTargets = gpuArray(t .* tr.testMask{1});
+            trainPerformance = perform(net,trainTargets,y);
+            valPerformance = perform(net,valTargets,y);
+            testPerformance = perform(net,testTargets,y);
+        
+            results_mse{i} = [results_mse{i} testPerformance];
+            results_PE{i} = [results_PE{i} percentErrors];
+    
+            networks{i,find(cellfun('isempty', networks(i,:)),1)} = net;        
+            %% generate
+            if plot_confusion == true
+                figure
+                fig = plotconfusion(testTargets,y), title('Channel Reduction Confusion (100) 1')
+                saveas(fig,'confu_test1')
+            end
+            if (gen_sim == true)
+                gensim(net);
+            end
+        end
+    end
+
+    if (gen_nets == true)
+        fname = "networks_" + iterations + "iterations.mat";
+        save(fname,'networks')
+    end
+    %% means
+    test_amount = size(results_mse{1, 1}, 1); 
+    
+    % Get the number of cells in results_mse
+    numCells = numel(results_mse); 
+    
+    avg_mse = zeros(test_amount, 1); % Preallocate for efficiency
+    avg_PE = zeros(test_amount, 1);   % Preallocate for efficiency
+    
+    for i = 1:test_amount
+        % Dynamically create the mean calculation for results_mse
+        mse_values = zeros(numCells, 1); % Preallocate for mean calculation
+        for j = 1:numCells
+            mse_values(j) = results_mse{j, 1}(i);
+        end
+        avg_mse(i) = mean(mse_values);
+    
+        % Dynamically create the mean calculation for results_PE
+        pe_values = zeros(numCells, 1); % Preallocate for mean calculation
+        for j = 1:numCells
+            pe_values(j) = results_PE{j, 1}(i);
+        end
+        avg_PE(i) = mean(pe_values);
+    end
+    
+    %% figures and saves
+    
+    figure
+    limit_padding = .00000001;
+    hold on
+    bar(1-avg_mse);
+    legend('Total Accuracy (1st Trial)')
+    xlabel("Channels")
+    ylabel("Avg accuracy over all classes (%)")
+    ylim([min(1-avg_mse)-limit_padding*min(1-avg_mse) max(1-avg_mse)+limit_padding*max(1-avg_mse)])
+    title("Projected Accuracy vs Channel Redux (" + iterations + " iterations)")
+    xticks(1:test_amount)
+    xticklabels({6:2:24})
+    
+
+end
+
+
+%% REALTIME
+    %% load test data and remove rest
+    clearvars -except classes_amount PC1 preset on_duration networks iterations replace_classes_offline Channel_array Channel_amount save_plots closeall_after plot_heatmap plot_confusion results_PE results_mse avg_PE avg_mse online save_vars
+    load test_full.mat;
+    filter_period = 0.3;
+    if preset == 0
+        [signals_full, classes_full, class_combined] = removeRest(FMG_test, 2500, 0);
+    else
+        [signals_full, classes_full, class_combined] = removeRest(FMG_test, 1500, 0);
+    end
+    
+    
+    %% replace
+    addpath('replacements')
+    files = dir('replacements\*_test.mat');
+    replace_classes = [];
+    
+    %% replace classes
+    if isempty(files) ~= true
+        replacement = {};
+        for k = 1:length(files)
+            baseFileName = files(k).name;
+            replacement{end+1} = load(baseFileName);
+            numberPart = regexp(extractBefore(baseFileName, '_test'), '[A-Za-z]*(\d+)', 'tokens');
+            replace_classes = [replace_classes str2double(numberPart{1,1})]; 
+        end
+    
+        for i = 1:length(replace_classes)
+            fprintf("Choosing class %.f\n", replace_classes(i));
+            if preset == 0
+                [signals_reduced, classes_reduced, ~] = removeRest(FMG_test, 2500, 0);
+            elseif preset == 1 || preset ==1.5
+                [signals_reduced, classes_reduced, ~] = removeRest(FMG_test, 1500, 0);
+            else
+                [signals_reduced, classes_reduced, ~] = removeRest(FMG_test, 2500, 0);
+            end
+            signals_reduced = insertSignal(signals_reduced, classes_reduced, replacement{i}.FMG_replace, replace_classes(i), length(replace_classes), classes_amount, 2, 3, on_duration*1000/2, 0);
+            fprintf("Replacing class %.f\n", replace_classes(i))
+        end
+    end
+    rmpath('replacements')
+    
+
+
+
+
+    %% analysis
+    for i = 1:length(classes_full)
+        if ismember(1, classes_full(i,2:end)) == 1
+            classes_full(i,1) = 0;
+        else
+            classes_full(i,1) = 1;
+        end 
+    end
+    t = classes_full';
+    
+    
+    t_deriv = [];
+    for i = 1:classes_amount
+        t_deriv = [t_deriv; diff(t(i,:))]; %rise and fall of each class
+    end
+    
+    
+    % find class divider points
+    LOC_pk = 2;
+    for i = 1:classes_amount
+        LOC_pk = [LOC_pk; find(t_deriv(i,:) == 1)];
+    end
+    LOC_pk(end+1) = length(t);
+    
+    
+    %PCA CHANNEL SELECT
+    x=cell(length(Channel_array),1);
+    for channel_i = 1:length(Channel_array)
+        [PC_sorted, i] = sort(PC1,'descend');
+        for j = 1:Channel_array(channel_i)
+            signals_reduced_TEST(:,j) = signals_full(:,i(j));
+        end
+        x{channel_i} = signals_reduced_TEST';
+    end
+    
+
+if Channel_amount == 24
+   map1 = [PC_sorted(find(i == 12)) PC_sorted(find(i == 11)) PC_sorted(find(i == 10));
+           PC_sorted(find(i == 9)) PC_sorted(find(i == 8)) PC_sorted(find(i == 7));
+           PC_sorted(find(i == 6)) PC_sorted(find(i == 5)) PC_sorted(find(i == 4));
+           PC_sorted(find(i == 3)) PC_sorted(find(i == 2)) PC_sorted(find(i == 1));];
+    
+    map2 = [PC_sorted(find(i == 24)) PC_sorted(find(i == 23)) PC_sorted(find(i == 22));
+           PC_sorted(find(i == 21)) PC_sorted(find(i == 20)) PC_sorted(find(i == 19));
+           PC_sorted(find(i == 18)) PC_sorted(find(i == 17)) PC_sorted(find(i == 16));
+           PC_sorted(find(i == 15)) PC_sorted(find(i == 14)) PC_sorted(find(i == 13));];
+else
+   map1 = [PC_sorted(find(i == 9)) PC_sorted(find(i == 8)) PC_sorted(find(i == 7));
+           PC_sorted(find(i == 6)) PC_sorted(find(i == 5)) PC_sorted(find(i == 4));
+           PC_sorted(find(i == 3)) PC_sorted(find(i == 2)) PC_sorted(find(i == 1));];
+    
+    map2 = [PC_sorted(find(i == 18)) PC_sorted(find(i == 17)) PC_sorted(find(i == 16));
+           PC_sorted(find(i == 15)) PC_sorted(find(i == 14)) PC_sorted(find(i == 13));
+           PC_sorted(find(i == 12)) PC_sorted(find(i == 11)) PC_sorted(find(i == 10));];
+end
+    
+    
+    filter_spacing = filter_period*1000;
+    percentErrors = [];
+    y = cell(iterations,length(Channel_array));
+    for iter = 1:iterations
+        for i = 1:length(Channel_array)
+            y{iter,find(cellfun('isempty', y(iter,:)),1)} = networks{iter,i}(x{i});
+        end
+    
+        tind = {};
+        yind = {};
+        for pca_n = 1:length(Channel_array)
+            for c = 1:classes_amount
+                tind{c} = {[vec2ind(t(:,LOC_pk(c):LOC_pk(c+1)))]};
+                y_unfiltered = [vec2ind(y{iter,pca_n}(:,LOC_pk(c):LOC_pk(c+1)))];
+                y_deriv = diff(y_unfiltered);
+                y_deriv(1) = 0;
+                y_deriv_pk_loc = find(y_deriv ~= 0);
+        
+        
+                freeze_point = [];
+                freeze_value = [];
+                filter_i = filter_spacing;
+                for pointer = 1:length(y_deriv)
+                    if y_deriv(pointer)~=0 && isempty(freeze_point)
+                        freeze_point = pointer;
+                        freeze_value = y_unfiltered(pointer);
+                    elseif any(freeze_point) && pointer>=freeze_point+filter_i && y_deriv(pointer)==0
+                        y_unfiltered(freeze_point:pointer) = freeze_value;
+                        freeze_point = [];
+                        freeze_value = [];
+                    else
+                        continue
+                    end
+                end
+            yind{c} = {y_unfiltered};
+            percentErrors(c) = [sum(tind{1,c}{1,1} ~= yind{1,c}{1,1})/numel(tind{1,c}{1,1})];
+            end
+            PE{iter,pca_n} = percentErrors;
+            TOTAL_ACCURACY{iter,pca_n} = (1-percentErrors);
+        end
+        clear y_unfiltered y_deriv
+    
+        
+    
+        y_filtered = [];
+        for i = 1:length(yind)
+            y_filtered = [y_filtered,yind{1,i}{1,1}];
+        end
+    end
+    
+    for pca_n = 1:length(Channel_array)
+        for i = 1:classes_amount
+            TOTAL_PE(pca_n,i) = PE{iterations,pca_n}(i);
+        end
+    end
+    TOTAL_ACCURACY = 1-TOTAL_PE;
+    
+    AVG_PE = mean(TOTAL_PE,2);
+    %AVG_STD = std(TOTAL_ACCURACY,[],2);
+    AVG_STD_byclass_maxSensors = [];
+    AVG_ACCURACY = [];
+    AVG_STD = [];
+    for i = 1:iterations
+        AVG_STD_byclass_maxSensors = [AVG_STD_byclass_maxSensors; 1-PE{i,end}];
+    end
+    AVG_ACCURACY_byclass_maxSensors = mean(AVG_STD_byclass_maxSensors);
+    for i = 1:length(Channel_array)
+        for j = 1:iterations
+            AVG_ACCURACY_loop(j,:) = 1-PE{j,i};
+        end
+        AVG_ACCURACY(i) = mean(AVG_ACCURACY_loop, 'all');
+        AVG_STD(i) = std(mean(AVG_ACCURACY_loop),[], 'all');
+        clear AVG_ACCURACY_loop
+    end
+    
+    AVG_STD_byclass_maxSensors = [std(mean(AVG_STD_byclass_maxSensors,2)) std(AVG_STD_byclass_maxSensors,[],1)];
+    if save_vars == true
+        save("PCA_std_" +iterations+ "iter.mat", 'AVG_STD')
+        save("TOTAL_ACCURACY.mat", 'TOTAL_ACCURACY')
+        save("AVG_STD.mat", 'AVG_STD')
+    end
+    min_channel_90 = Channel_array(find(AVG_ACCURACY >= 0.9*max(AVG_ACCURACY),1));
+    
+    reducts = width(PE);
+    k = 1;
+    for i = 1:reducts
+        for j = 1:iterations
+            ACC_raw(k,:) = 1-PE{j,i};
+            k = k+1;
+        end
+    end
+    if save_vars == true
+        save("ACC_raw.mat", 'ACC_raw')
+    end
+
+
+    %% plotting
+    plot_color = [0 .5 .5];
+    if Channel_amount == 18 && online == false
+        Channel_array = [6:2:18];
+        plot_color = [0 0.4470 0.7410];
+    end
+    figure
+    hold on
+    limit_padding = 0.05;
+    b = bar(Channel_array, AVG_ACCURACY);
+    b.FaceColor = 'flat';
+    b.CData = plot_color;
+    b1 = bar(Channel_array(find(AVG_ACCURACY == (max(AVG_ACCURACY)))),AVG_ACCURACY(find(AVG_ACCURACY == (max(AVG_ACCURACY)))), 1.6)
+    b1.FaceColor = 'flat';
+    b1.CData(find(AVG_ACCURACY == (max(AVG_ACCURACY))),:) = [.5 0 .5];
+    b2 = bar(Channel_array(find(AVG_ACCURACY >= 0.9*max(AVG_ACCURACY),1)),AVG_ACCURACY(find(AVG_ACCURACY >= 0.9*max(AVG_ACCURACY),1)), 1.6)
+    b2.FaceColor = 'flat';
+    b2.CData(find(AVG_ACCURACY >= 0.9*max(AVG_ACCURACY),1),:) = [.75 0 0];
+    er = errorbar(Channel_array,AVG_ACCURACY,AVG_STD);    
+    er.Color = [0 0 0];                            
+    er.LineStyle = 'none';  
+    xticks(Channel_array)
+    text(Channel_array, AVG_ACCURACY, num2str(AVG_ACCURACY','%0.2f'),'HorizontalAlignment','center','VerticalAlignment','bottom')
+    title("Actual Accuracy vs Channel Redux (" + iterations + " iterations)")
+    xlabel('Channels')
+    ylabel('Avg accuracy over all classes (%)')
+    ylim([min(AVG_ACCURACY-AVG_STD)*(1-limit_padding) max(AVG_ACCURACY+AVG_STD)*(1+limit_padding)])
+    legend('','Channels for Highest Accuracy','Channels for Acceptable Accuracy')
+    if save_plots == true
+        saveas(gcf,"acc_" + iterations + "iteration_actual")
+    end
+    
+    figure
+    area(FMG_test{4}.Values.Data)
+    title('Real-Time Classification Output')
+    
+    
+    [signals_full, classes_full, class_combined] = removeRest_test(FMG_test, 2500, 0);
+    figure 
+    subplot(2,1,1)
+    plot(signals_full)
+    title('online output')
+    xline(0:1495:length(signals_full))
+    subplot(2,1,2)
+    plot(y_filtered)
+    xline(0:4496:length(y_filtered))
+    title('offline output')
+    
+
+if plot_heatmap == true
+    figure
+    heatmap([map1,map2])    
+    figure
+    subplot(1,2,1)
+    heatmap(map1)
+    title("Posterior PCA map")
+    subplot(1,2,2)
+    heatmap(map2)
+    title("Anterior PCA map")
+end
+
+
+
+for i = 1:iterations
+    accuracy_maxSensors_5iter(i,:) = (1-PE{i,end});
+end
+accuracy_avg_byclass = [mean(accuracy_maxSensors_5iter,'all') mean(accuracy_maxSensors_5iter,1)];
+std_avg_byclass = [std(mean(accuracy_maxSensors_5iter)) std(accuracy_maxSensors_5iter,[],1)];
+figure
+b = bar(accuracy_avg_byclass);
+b.FaceColor = 'flat';
+b.CData(1,:) = [.5 0 .5];
+hold on
+errorbar(1:length(accuracy_avg_byclass), accuracy_avg_byclass, AVG_STD_byclass_maxSensors, '.')
+xticks(1:classes_amount+1)
+xticklabels(['Mean', string([1:classes_amount])])
+grid on
+xlabel('Classes')
+ylabel('Accuracy (%)')
+filename = pwd;
+filename = filename(end-12:end);
+title(filename)
+if save_plots == true
+    savefig("acc_" + iterations + "iteration_byclass_maxSensors")
+    saveas(gcf,"acc_" + iterations + "iteration_byclass_maxSensors.png")
+end
+
+if closeall_after == true
+    close all
+end
