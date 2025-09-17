@@ -51,12 +51,11 @@ function signals_reduced = add_on_new(signals_reduced, classes_reduced, data, re
     LOC_fall = find(replace_class_deriv == -1);
 
     if replace_class == 1
-        %signals_reduced(1,:) = [];
         signals_reduced(1:LOC_fall-2,:) = signals_new_reduced;
+    elseif height(signals_reduced(LOC+1:LOC_fall,:)) ~= height(signals_new_reduced(1:(height(signals_new_reduced))))
+         signals_reduced(LOC+1:LOC_fall,:) = signals_new_reduced(1:height(signals_reduced(LOC+1:LOC_fall,:)),:);
     elseif replace_class == classes_amount
          signals_reduced(LOC(end):end,:) = signals_new_reduced;
-    elseif height(signals_reduced(LOC+1:LOC_fall,:)) ~= height(signals_new_reduced)
-        signals_reduced(LOC+1:LOC_fall,:) = signals_new_reduced(1:2/3*(height(signals_new_reduced)),:);
     else
         signals_reduced(LOC+1:LOC_fall,:) = signals_new_reduced;
     end

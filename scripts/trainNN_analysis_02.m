@@ -2,17 +2,10 @@
 close all;
 clear results_mse results_PE avg_mse avg_PE
 trainBool = false;   %<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< TRAIN NN's?
-online = true;      %used for online testing only
+online = false;      %used for online testing only
 
 iterations = 5;     %how many iterations per sensor reduction
 reduction_rate = 2; %how many sensors to reduce by
-
-%how many sensor reductions
-if Channel_amount == 24
-    test_amount = 10; 
-else
-    test_amount = 7;
-end
 
 %plotting and saving
 save_vars = false;      %save results
@@ -23,8 +16,6 @@ plot_confusion = false;
 plot_heatmap = false;
 closeall_after = false;
 
-
-
 if online == true
     iterations = 1;
     test_amount = 1; 
@@ -33,6 +24,14 @@ if online == true
 else
     load preset_test.mat
 end
+
+%how many sensor reductions
+if Channel_amount == 24
+    test_amount = 10; 
+else
+    test_amount = 7;
+end
+
 
 %% OFFLINE    
 Channel_array = Channel_amount-(test_amount-1)*reduction_rate:reduction_rate:Channel_amount; 
