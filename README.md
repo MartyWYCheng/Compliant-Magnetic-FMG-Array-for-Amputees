@@ -9,8 +9,13 @@ It is intended to help readers reproduce our results and/or apply the data to th
 ## 1. Citation
 
 If you use the provided data or scripts, please cite the main paper as follows:
+Cheng, W., & Engeberg, E. D.
+"Compliant Magnetic Sensor Arrays Enable Real-Time Force Myogram Pattern Recognition for Dexterous Hand Control by Amputees."
 
-[Citation pending]
+Zenodo, 2025. DOI: 
+
+<img width="191" height="20" alt="image" src="https://github.com/user-attachments/assets/07c5169e-0d8d-4d6b-be66-7bb50350732c" />
+
 
 ---
 
