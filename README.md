@@ -44,48 +44,43 @@ If you use the provided data or scripts, please cite the main paper as follows:
 
 ---
 
-## 3. Repository Contents and Usage
+## 3. Repository Contents and Structure
 
-### /data\_CSV: Ready-to-train Data
+The repository contains two primary data formats: pre-processed, ready-to-train data in CSV format, and raw/filtered session data in MATLAB format.
 
-* **Format:** `.csv` files.
-* Includes training and testing data for each subject.
-* **Data Processing:** FMG data (`x_train`, `x_test`) has been **filtered** (gain = 10, time constant of $\tau=110$ s) and **bias-corrected**.
-* Rest periods have been removed.
-* FMG data for certain gestures has been replaced (if replacement data exists for the particular subject’s session).
+* `/data_CSV`: **Ready-to-train data files** in `.csv` format.
+    * Includes training (`x_train.csv`, `y_train.csv`) and testing (`x_test.csv`, `y_test.csv`) data for each subject.
+    * **Data Processing:** FMG data (`x_train`, `x_test`) has been **filtered** (gain = 10, time constant of $\tau=110$ s), **bias-corrected**, and has **rest periods removed**.
+* `/data_MAT`: **Raw and processed session data** in MATLAB file formats (`.mat`).
+    * * Includes data from each trial of each session of each subject.
+    * * `/replacements`: Contains replacement data for certain gestures for a few subjects.
+    * **Note:** Rest periods were **not** removed from these files.
+    * Each dataset includes: `signals_raw` (Raw unfiltered FMG data), `signals_filtered_normalized` (Filtered and bias corrected FMG data), and `classes` (Class labels).
+* `/README.md`: Basic repository usage instructions.
 
-#### Script Usage Instructions for CSV Files:
 
-Navigate to the desired session of a chosen subject in `/data_CSV/SX0X/sessionX`.
+---
 
-* `x_train.csv`: FMG data from the training phase (time step, sensors).
-* `y_train.csv`: Class labels from the training phase (time step, classes).
-* `x_test.csv`: FMG data from the testing phase (time step, sensors).
-* `y_test.csv`: Class labels from the testing phase (time step, classes).
+## 4. Usage Instructions
 
-### /data\_MAT: Raw and Filtered Data
+### Accessing CSV Files (Ready-to-Train)
 
-* **Format:** **MATLAB** file formats (`.mat`).
-* Includes the session FMG data from each trial of each session of each subject.
-* **Note:** Rest periods were **not** removed from these files.
-* Each dataset includes:
-    * `signals_raw`: Raw **unfiltered** FMG data.
-    * `signals_filtered_normalized`: **Filtered and bias corrected** FMG data.
-    * `classes`: Class labels.
+1.  Navigate to the desired session of a chosen subject: `/data_CSV/SX0X/sessionX`.
+2.  Files are dimensioned as (**time step, sensors**) for FMG data and (**time step, classes**) for class labels:
+    * `x_train.csv`: FMG data from the training phase.
+    * `y_train.csv`: Class labels from the training phase.
+    * `x_test.csv`: FMG data from the testing phase.
+    * `y_test.csv`: Class labels from the testing phase.
 
-#### Script Usage Instructions for MATLAB Files:
+### Accessing MATLAB Files (Raw and Processed)
 
-1.  Preserve the folder structure when downloading/extracting the repository.
-2.  Navigate to the subject's session directory: `/data_MAT/SX0X/sessionX`.
-3.  Load the data by double-clicking `train_full.mat` or `test_full.mat` in the file explorer, or by entering the following in the MATLAB Command Window:
+1.  Navigate to the subject's session directory: `/data_MAT/SX0X/sessionX`.
+2.  Load the full session data by double-clicking `train_full.mat` or `test_full.mat` in the file explorer, or use the Command Window:
     ```matlab
     load(“train_full.mat”)
     % OR
     load(“test_full.mat”)
     ```
-4.  Open the **FMG\_train** or **FMG\_test** variable in the Workspace to view the raw signals (`signals_raw`), filtered/bias-corrected signals (`signals_filtered_normalized`), and class labels (`classes`) of the full session.
-5.  Navigate to `FMG_train{X}.Values.Data` or `FMG_test{X}.Values.Data` to view the data in (**time step, sensor/class**) dimensions.
-6.  Selecting all values and plotting them will show a visual representation of the signals over the whole session.
-7.  Replacement data for certain gestures for a few subjects is also included in the **replacements** folder.
-
+3.  View the data variables (raw signals, filtered signals, and class labels) in the `FMG_train` or `FMG_test` variable in the Workspace.
+4.  Data dimensions are accessed via `FMG_train{X}.Values.Data` or `FMG_test{X}.Values.Data` in (**time step, sensor/class**) format.
 
