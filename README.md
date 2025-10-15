@@ -36,7 +36,8 @@ Zenodo, 2025. DOI:
 
 1.  Ensure you have **Git** installed.
 2.  Open your terminal or Git Bash.
-3.  Execute the following command, replacing `[COPIED LINK]` with the HTTPS link from the "**Code**" button on the repository page:
+3.  Navigate to the desired directory to store the dataset.
+4.  Execute the following command, replacing `[COPIED LINK]` with the HTTPS link from the "**Code**" button on the repository page:
     ```bash
     git clone https://github.com/MartyWYCheng/Compliant-Magnetic-FMG-Array-for-Amputees.git
     ```
