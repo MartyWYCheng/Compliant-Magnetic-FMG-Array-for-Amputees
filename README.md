@@ -32,22 +32,15 @@ Zenodo, 2025. DOI:
 
 ## 2. Download Instructions
 
-### Clone Repository (Recommended)
+### Clone Repository
 
 1.  Ensure you have **Git** installed.
 2.  Open your terminal or Git Bash.
 3.  Navigate to the desired directory to store the dataset.
-4.  Execute the following command, replacing `[COPIED LINK]` with the HTTPS link from the "**Code**" button on the repository page:
+4.  Execute the following command:
     ```bash
     git clone https://github.com/MartyWYCheng/Compliant-Magnetic-FMG-Array-for-Amputees.git
     ```
-
-### Download as ZIP
-
-1.  Click the green "**Code**" button on the repository page.
-2.  Select "**Download ZIP**" from the drop-down menu.
-3.  Extract the downloaded ZIP file to access all files.
-
 ---
 
 ## 3. Repository Contents and Structure
