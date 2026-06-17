@@ -9,8 +9,10 @@ It is intended to help readers reproduce our results and/or apply the data to th
 ## 1. Citation
 
 If you use the provided data or scripts, please cite the main paper as follows:
-Cheng, W. Y., & Engeberg, E. D.
-"Compliant Magnetic Sensor Arrays Enable Real-Time Force Myogram Pattern Recognition for Dexterous Hand Control by Amputees."
+> W. Y. Cheng and E. D. Engeberg, "Compliant Magnetic Sensor Arrays Enable Real-Time Force Myogram Pattern Recognition for Dexterous Hand Control by Amputees," in IEEE Transactions on Neural Systems and Rehabilitation Engineering, doi: 10.1109/TNSRE.2026.3702598.
+
+[![TNSRE Journal](https://img.shields.io/badge/IEEE_TNSRE-Paper_Link-00629B?style=flat-square&logo=ieee&logoColor=white)](https://ieeexplore.ieee.org/abstract/document/11557387/)
+
 
 Zenodo, 2026. DOI: 
 
