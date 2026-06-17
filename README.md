@@ -9,20 +9,19 @@ It is intended to help readers reproduce our results and/or apply the data to th
 ## 1. Citation
 
 If you use the provided data or scripts, please cite the main paper as follows:
-Cheng, W., & Engeberg, E. D.
+Cheng, W. Y., & Engeberg, E. D.
 "Compliant Magnetic Sensor Arrays Enable Real-Time Force Myogram Pattern Recognition for Dexterous Hand Control by Amputees."
 
-Zenodo, 2025. DOI: 
+Zenodo, 2026. DOI: 
 
-<img width="191" height="20" alt="image" src="https://github.com/user-attachments/assets/07c5169e-0d8d-4d6b-be66-7bb50350732c" />
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17308803.svg)](https://doi.org/10.5281/zenodo.17308803)
 
 ---
 
 ## 1. Data Repository Access
 
 * **Repository Location:** https://github.com/MartyWYCheng/Compliant-Magnetic-FMG-Array-for-Amputees
-* **Version:** 1.0 (October 1, 2025)
+* **Version:** 1.1.0 (June 17, 2026)
 * **License:** This dataset and associated scripts are licensed under a **Creative Commons Attribution 4.0 International (CC BY 4.0) license**.
 * **Authors:** Wen-Yu Cheng, Erik D. Engeberg
     * Wen-Yu Cheng: Department of Electrical Engineering and Computer Science, Florida Atlantic University, Boca Raton, FL, USA. (Email: wcheng2014@fau.edu)
@@ -64,7 +63,7 @@ The repository contains two primary data formats: pre-processed, ready-to-train 
 
 ### Accessing CSV Files (Ready-to-Train)
 
-1.  Navigate to the desired session of a chosen subject: `/data_CSV/SX0X/sessionX`.
+1.  Navigate to the desired session of a chosen subject: `/data_CSV/SXXX/sessionX`.
 2.  Files are dimensioned as (**time step, sensors**) for FMG data and (**time step, classes**) for class labels:
     * `x_train.csv`: FMG data from the training phase.
     * `y_train.csv`: Class labels from the training phase.
@@ -73,7 +72,7 @@ The repository contains two primary data formats: pre-processed, ready-to-train 
 
 ### Accessing MATLAB Files (Raw and Processed)
 
-1.  Navigate to the subject's session directory: `/data_MAT/SX0X/sessionX`.
+1.  Navigate to the subject's session directory: `/data_MAT/SXXX/sessionX`.
 2.  Load the full session data by double-clicking `train_full.mat` or `test_full.mat` in the file explorer, or use the Command Window:
     ```matlab
     load(“train_full.mat”)
@@ -82,4 +81,10 @@ The repository contains two primary data formats: pre-processed, ready-to-train 
     ```
 3.  View the data variables (raw signals, filtered signals, and class labels) in the `FMG_train` or `FMG_test` variable in the Workspace.
 4.  Data dimensions are accessed via `FMG_train{X}.Values.Data` or `FMG_test{X}.Values.Data` in (**time step, sensor/class**) format.
+5.  Replacement data for the subject can be accessed by double-clicking `replacements/replaceX_train.mat` or `replacements/replaceX_test.mat` in the file explorer, or using the Command Window:
+    ```matlab
+    load(“replacements/replaceX_train.mat”)
+    % OR
+    load(“replacements/replaceX_test.mat”)
+    ```
 
