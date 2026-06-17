@@ -14,7 +14,11 @@ Cheng, W. Y., & Engeberg, E. D.
 
 Zenodo, 2026. DOI: 
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17308803.svg)](https://doi.org/10.5281/zenodo.17308803)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17308802.svg)](https://doi.org/10.5281/zenodo.17308802)
+
+IEEE DataPort: 
+
+[![IEEE DataPort](https://img.shields.io/badge/IEEE--DataPort-Dataset_Repository-blue?style=for-the-badge&logo=ieee&logoColor=white)](https://ieee-dataport.org/documents/compliant-magnetic-fmg-array-dataset)
 
 ---
 
